@@ -7,12 +7,12 @@ import Language.Tiny.Analysis.Token
 %wrapper "basic"
 
 $digit = [0-9]
-$alpha = [a-zA-z]
-$alphanumeric = [$alpha$digit]
-$alphanumericUnderscore = [$alphanumeric\_]
+$alpha = [a-zA-Z]
 
+@alphanumeric = $alpha | $digit
+@alphanumericUnderscore = $alpha | $digit | _
 @comment = "//" .*
-@name = $alpha $alphanumericUnderscore*
+@name = $alpha @alphanumericUnderscore*
 @literalInt = $digit+
 @literalChar = \' . \'
 
@@ -47,6 +47,6 @@ tokens :-
   "!" { const Exclamation }
   "length" { const Length }
   "while" { const While }
-  @name { \s -> Name s }
-  @literalInt { \s -> LiteralInt (read s) }
-  @literalChar { \s -> LiteralChar (head (tail s)) }
+  @name { Name }
+  @literalInt { LiteralInt . read }
+  @literalChar { LiteralChar . head . tail }
