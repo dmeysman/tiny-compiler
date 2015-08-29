@@ -1,12 +1,15 @@
 {
 module Language.Tiny.Analysis.Syntactic where
 
+import qualified Control.Monad.State as State
+
 import Language.Tiny.Analysis.Token
 import Language.Tiny.Analysis.Grammar
 }
 
 %name happyParseTokens
 %tokentype { Token }
+%monad { State.State ([SymbolTableEntry], [SymbolTableEntry]) }
 
 %token
 
@@ -57,9 +60,9 @@ Declarations : Declaration { [$1] }
              | Declarations Declaration { $2 : $1 }
 
 Declaration : FunctionDeclaration { $1 }
-            | VariableDeclaration { VariableDeclaration $1 }
+            | VariableDeclaration {% parseVariableDeclaration $1 }
 
-FunctionDeclaration : Annotation name '(' Parameters ')' Block { FunctionDeclaration $1 $2 $4 $6 }
+FunctionDeclaration : Annotation name '(' Parameters ')' Block {% parseFunctionDeclaration $1 $2 $4 $6 }
 
 Parameters : {- empty -} { [] }
            | NonEmptyParameters { $1 }
@@ -67,7 +70,7 @@ Parameters : {- empty -} { [] }
 NonEmptyParameters : Parameter { [$1] }
                    | Parameter ',' NonEmptyParameters { $1 : $3 }
 
-Parameter : Annotation name { Parameter $1 $2 }
+Parameter : Annotation name {% parseParameter $1 $2 }
 
 Block : '{' VariableDeclarations Statements '}' { Block $2 $3 }
 
@@ -77,7 +80,7 @@ VariableDeclarations : {- empty -} { [] }
 NonEmptyVariableDeclarations : VariableDeclaration { [$1] }
                              | VariableDeclaration NonEmptyVariableDeclarations { $1 : $2 }
 
-VariableDeclaration : Annotation name ';' { Variable $1 $2 }
+VariableDeclaration : Annotation name ';' {% parseVariable $1 $2 }
 
 Annotation : int { IntAnnotation }
            | char { CharAnnotation }
@@ -120,5 +123,38 @@ Arguments : Expression { [$1] }
           | Arguments ',' Expression { $3 : $1 }
 
 {
+data SymbolTableEntry
+  = FunctionEntry String [SymbolTableEntry]
+  | VariableEntry String Annotation
+  deriving (Eq, Show)
+
+parseFunctionDeclaration :: Annotation -> String -> [Parameter] -> Block -> State.State ([SymbolTableEntry], [SymbolTableEntry]) Declaration
+parseFunctionDeclaration annotation name parameters block  =
+  do
+    (scope, table) <- State.get
+    State.put ([], (FunctionEntry name scope) : table)
+    return $ FunctionDeclaration annotation name parameters block
+
+parseVariableDeclaration :: Variable -> State.State ([SymbolTableEntry], [SymbolTableEntry]) Declaration
+parseVariableDeclaration variable =
+  do
+    (scope, table) <- State.get
+    State.put ([], head scope : table)
+    return $ VariableDeclaration variable
+
+parseVariable :: Annotation -> String -> State.State ([SymbolTableEntry], [SymbolTableEntry]) Variable
+parseVariable annotation name =
+  do
+    (scope, table) <- State.get
+    State.put (VariableEntry name annotation : scope, table)
+    return $ Variable annotation name
+
+parseParameter :: Annotation -> String -> State.State ([SymbolTableEntry], [SymbolTableEntry]) Parameter
+parseParameter annotation name =
+  do
+    (scope, table) <- State.get
+    State.put (VariableEntry name annotation : scope, table)
+    return $ Parameter annotation name
+
 happyError = error . ("syntactic error: " ++) . show
 }
