@@ -5,6 +5,7 @@ import qualified Control.Monad.State as State
 
 import Language.Tiny.Analysis.Token
 import Language.Tiny.Analysis.Grammar
+import Language.Tiny.PrettyPrint
 }
 
 %name happyParseTokens
@@ -127,6 +128,11 @@ data SymbolTableEntry
   = FunctionEntry String [SymbolTableEntry]
   | VariableEntry String Annotation
   deriving (Eq, Show)
+
+instance PrettyPrint SymbolTableEntry where
+
+  prettyPrint (FunctionEntry name _) = "function " ++ name
+  prettyPrint (VariableEntry name _) = "variable " ++ name
 
 parseFunctionDeclaration :: Annotation -> String -> [Parameter] -> Block -> State.State ([SymbolTableEntry], [SymbolTableEntry]) Declaration
 parseFunctionDeclaration annotation name parameters block  =
