@@ -1,0 +1,21 @@
+name:                tiny-compiler
+version:             0.1.0.0
+synopsis:            Compiler for the Tiny language for Compilers (Spring 2015) at the Vrije Universiteit Brussel
+homepage:            http://tinf2.vub.ac.be/~dvermeir/courses/compilers/tiny.html
+license:             MIT
+license-file:        LICENSE
+author:              Dylan Meysmans
+maintainer:          dmeysman@vub.ac.be
+copyright:           (c) 2015 Dylan Meysmans
+category:            Language
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable t2s
+  main-is:             Main.hs
+  other-modules:       Language.Tiny.Analysis.Lexical, Language.Tiny.Analysis.Syntactic
+  build-depends:       base, array, containers, mtl
+  build-tools:         alex, happy
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+  other-extensions:    Rank2Types
