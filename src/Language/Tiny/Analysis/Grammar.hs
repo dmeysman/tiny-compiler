@@ -21,7 +21,7 @@ data Annotation
   = IntAnnotation
   | CharAnnotation
   | ArrayAnnotation Annotation Expression
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 data Block
   = Block [Variable] [Statement]
@@ -33,16 +33,18 @@ data Statement
   | Loop Expression Statement
   | Statements Block
   | Assignment Lefthand Expression
+  | ArrayAssignment Lefthand Expression
   | ReturnStatement Expression
   | VoidCall String [Expression]
   | Output Expression
   | Input Lefthand
+  | Nop
   deriving (Eq, Show)
 
 data Lefthand
   = ScalarAccess String
   | ArrayAccess Lefthand Expression
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 data Expression
   = Lefthand Lefthand
@@ -60,4 +62,4 @@ data Expression
   | Call String [Expression]
   | CharValue Char
   | ArrayLength Lefthand
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
