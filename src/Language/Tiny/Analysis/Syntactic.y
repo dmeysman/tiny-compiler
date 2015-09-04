@@ -93,7 +93,7 @@ Statements : Statement { [$1] }
 Statement : if '(' Expression ')' Statement %prec then { Conditional $3 $5 }
           | if '(' Expression ')' Statement else Statement { Alternative $3 $5 $7 }
           | while '(' Expression ')' Statement { Loop $3 $5 }
-          | Lefthand '=' Expression ';' { Assignment $1 $3 }
+          | Lefthand '=' Expression ';' { assignmentOrArrayAssignment $1 $3 }
           | return Expression ';' { ReturnStatement $2 }
           | name '(' Arguments ')' ';' { VoidCall $1 $3 }
           | Block { Statements $1 }
@@ -120,25 +120,34 @@ Expression : Lefthand { Lefthand $1 }
            | charValue { CharValue $1 }
            | length Lefthand { ArrayLength $2 }
 
-Arguments : Expression { [$1] }
-          | Arguments ',' Expression { $3 : $1 }
+Arguments : {- empty -} { [] }
+          | NonEmptyArguments { $1 }
+
+NonEmptyArguments : Expression { [$1] }
+                  | Arguments ',' Expression { $3 : $1 }
 
 {
 data SymbolTableEntry
-  = FunctionEntry String [SymbolTableEntry]
+  = FunctionEntry Annotation String [SymbolTableEntry]
   | VariableEntry String Annotation
-  deriving (Eq, Show)
+  | ParameterEntry String Annotation
+  deriving (Eq, Ord, Show)
 
 instance PrettyPrint SymbolTableEntry where
 
-  prettyPrint (FunctionEntry name _) = "function " ++ name
-  prettyPrint (VariableEntry name _) = "variable " ++ name
+  prettyPrint (FunctionEntry _ name _) = name
+  prettyPrint (VariableEntry name _) = name
+  prettyPrint (ParameterEntry name _) = name
+
+assignmentOrArrayAssignment :: Lefthand -> Expression -> Statement
+assignmentOrArrayAssignment lefthand@(ArrayAccess _ _) expression = ArrayAssignment lefthand expression
+assignmentOrArrayAssignment lefthand expression = Assignment lefthand expression
 
 parseFunctionDeclaration :: Annotation -> String -> [Parameter] -> Block -> State.State ([SymbolTableEntry], [SymbolTableEntry]) Declaration
 parseFunctionDeclaration annotation name parameters block  =
   do
     (scope, table) <- State.get
-    State.put ([], (FunctionEntry name scope) : table)
+    State.put ([], (FunctionEntry annotation name scope) : table)
     return $ FunctionDeclaration annotation name parameters block
 
 parseVariableDeclaration :: Variable -> State.State ([SymbolTableEntry], [SymbolTableEntry]) Declaration
@@ -159,7 +168,7 @@ parseParameter :: Annotation -> String -> State.State ([SymbolTableEntry], [Symb
 parseParameter annotation name =
   do
     (scope, table) <- State.get
-    State.put (VariableEntry name annotation : scope, table)
+    State.put (ParameterEntry name annotation : scope, table)
     return $ Parameter annotation name
 
 happyError = error . ("syntactic error: " ++) . show
